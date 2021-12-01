@@ -2,12 +2,20 @@
 
 pthread_mutex_t mutex_lock;
 
+typedef struct _Connec{
+    int connectfd;
+    struct sockaddr_in addr;
+}Connec;
+
 void *thread(void *vargp){
-    int connfd = *((int *)vargp);
+    Connec *connec = ((Connec *)vargp);
+    int connfd = connec->connectfd;
+    struct sockaddr_in sockaddr = connec->addr;
     Pthread_detach(pthread_self());
     Free(vargp);
-    // proxy 실행, 마지막에 pthread_mutex_unlock(&mutex_lock) 실행
-    // 인자는 connfd랑 또 ??
+    // proxy 실행
+    // 인자는 connfd랑 &sockaddr, sockaddr 는 로그파일 작성시 사용됨
+    // 로그 파일 작성 전후로 pthread_mutex_lock, unlock 실행
     Close(connfd);
     return NULL;
 }
@@ -18,20 +26,22 @@ int main(int argc, char **argv){
 	exit(0);
     }
 
-    int listenfd, *connfdp;
+    int listenfd;
+    Connec *connec;
     socklen_t clientlen;
-    struct sockaddr_storage clientaddr;
+    struct sockaddr_in clientaddr;
     pthread_t tid;
 
-    pthread_mutex_lock(&mutex_lock);
+    pthread_mutex_init(&mutex_lock, NULL); // mutex 초기화
     
     int portnum = atoi(argv[1]); 
     listenfd = Open_listenfd(portnum);
     while(1){
-        clientlen = sizeof(struct sockaddr_storage);
-        connfdp = Malloc(sizeof(int));
-        *connfdp = Accept(listenfd, (SA *)&clientaddr, &clientlen);
-        Pthread_create(&tid, NULL, thread, connfdp);
+        clientlen = sizeof(struct sockaddr_in);
+        connec = Malloc(sizeof(Connect));
+        connec->connectfd= Accept(listenfd, (SA *)&clientaddr, &clientlen);        
+        connec->addr=clientaddr;
+        Pthread_create(&tid, NULL, thread, (void *)connec);
     }
     close(listenfd);
 }
@@ -118,3 +128,4 @@ void format_log_entry(char *logstring, struct sockaddr_in *sockaddr,
     /* Return the formatted log entry string */
     sprintf(logstring, "%s: %d.%d.%d.%d %s", time_str, a, b, c, d, uri);
 }
+
