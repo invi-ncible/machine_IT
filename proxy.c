@@ -1,9 +1,9 @@
 #include "csapp.h"
 
-FILE *log_file;                                                     //proxy.log
-pthread_mutex_t mutex_lock;                                         //critical section을 가진 thread들의 running time이 겹치지 않게 실행
+FILE *log_file;                                                         //proxy.log
+pthread_mutex_t mutex_lock;                                             //critical section을 가진 thread들의 running time이 겹치지 않게 실행
                                                                     
-typedef struct _Connec{                                             //peer thread에 소켓 정보를 전달하기 위한 구조체 선언
+typedef struct _Connec{                                                 //peer thread에 소켓 정보를 전달하기 위한 구조체 선언
     int connectfd;
     struct sockaddr_in addr;
 }Connec;
@@ -14,13 +14,13 @@ void read_request_headers(rio_t *rp);
 int parse_uri(char *uri, char *target_addr, char *path, int *port);
 void format_log_entry(char *logstring, struct sockaddr_in *sockaddr, char *uri, int size);
 
-void sigpipe_handler(int signal){                                   //연결이 끊어진 소켓에 쓰기를 하게 되면 프로그램을 종료시키는 SIGPIPE 시그널을 핸들링하기 위함 함수
-    printf("SIGPIPE HANDLED\n");                                    //선언?
+void sigpipe_handler(int signal){                                       //연결이 끊어진 소켓에 쓰기를 하게 되면 프로그램을 종료시키는 SIGPIPE 시그널을 핸들링하기 위함 함수
+    printf("SIGPIPE HANDLED\n");                                        //선언?
     return;                                                         
 }
 
 int main(int argc, char **argv){                            
-    if (argc != 2) {                                                //프록시 실행시 portnumber 입력, 입력하지 않을시 종료
+    if (argc != 2) {                                                    //프록시 실행시 portnumber 입력, 입력하지 않을시 종료
 	fprintf(stderr, "Usage: %s <port number>\n", argv[0]);
 	exit(0);
     }
@@ -28,33 +28,33 @@ int main(int argc, char **argv){
     int listenfd;
     Connec *connec;
     socklen_t clientlen;
-    struct sockaddr_in clientaddr;                                  //client 의 socket address
+    struct sockaddr_in clientaddr;                                      //client 의 socket address
     pthread_t tid;
 
-    //Signal(SIGPIPE, sigpipe_handler);
-    pthread_mutex_init(&mutex_lock, NULL);                          //mutex 초기화
+    //Signal(SIGPIPE, sigpipe_handler);                                 /**********/
+    pthread_mutex_init(&mutex_lock, NULL);                              //mutex 초기화
 
     int portnum = atoi(argv[1]); 
-    listenfd = Open_listenfd(portnum);                              //client와의 연결을 기다림
+    listenfd = Open_listenfd(portnum);                                  //client와의 연결을 기다림
     while(1){
-        clientlen = sizeof(struct sockaddr_in);                     //proxy와 client의 connection fd가 동적으로 할당됨
-        connec = Malloc(sizeof(Connect));                           //main thread 와 pear thread 가 동히세 connfd에 접근하는 것을 막음 
+        clientlen = sizeof(struct sockaddr_in);                         //proxy와 client의 connection fd가 동적으로 할당됨
+        connec = Malloc(sizeof(Connect));                               //main thread 와 pear thread 가 동히세 connfd에 접근하는 것을 막음 
         connec->connectfd= Accept(listenfd, (SA *)&clientaddr, &clientlen);        
-        connec->addr=clientaddr;                                    //client와의 connfd와 sockaddr를 connec 구조체에 전달
-        Pthread_create(&tid, NULL, thread, (void *)connec);         //thread 생성, connec를 thread에 인자로 전달
+        connec->addr=clientaddr;                                        //client와의 connfd와 sockaddr를 connec 구조체에 전달
+        Pthread_create(&tid, NULL, thread, (void *)connec);             //thread 생성, connec를 thread에 인자로 전달
     }
-    close(listenfd);                                                //thread 생성 후 main thread에서 listenfd 종료
+    close(listenfd);                                                    //thread 생성 후 main thread에서 listenfd 종료
 }
 
 void *thread(void *vargp){
     Connec *connec = ((Connec *)vargp);
     int connfd = connec->connectfd;
     struct sockaddr_in sockaddr = connec->addr;
-    Pthread_detach(pthread_self());                                 //pear thread가 죽을 때 회수를 자동으로 해줌
-    Free(vargp);                                                    //동적 메모리는 pear thread에서 free
-    // Signal(SIGPIPE, sigpipe_handler);                            //연결이 되지 않은 상태에서 통신 시 sigpie_handler 동작
-    proxy(connfd, &sockaddr);                                       //proxy 실행. 인자는 connfd랑 &sockaddr, sockaddr 는 로그파일 작성시 사용됨. 로그 파일 작성 전후로 pthread_mutex_lock, unlock 실행                                          
-    Close(connfd);                                                  //pear thread에서 connfd close
+    Pthread_detach(pthread_self());                                     //pear thread가 죽을 때 회수를 자동으로 해줌
+    Free(vargp);                                                        //동적 메모리는 pear thread에서 free
+    //Signal(SIGPIPE, sigpipe_handler);      /**********/               //연결이 되지 않은 상태에서 통신 시 sigpie_handler 동작
+    proxy(connfd, &sockaddr);                                           //proxy 실행. 인자는 connfd랑 &sockaddr, sockaddr 는 로그파일 작성시 사용됨. 로그 파일 작성 전후로 pthread_mutex_lock, unlock 실행                                          
+    Close(connfd);                                                      //pear thread에서 connfd close
     return NULL;
 }
 
