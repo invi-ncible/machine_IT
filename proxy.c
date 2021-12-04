@@ -15,7 +15,7 @@ int parse_uri(char *uri, char *target_addr, char *path, int *port);
 void format_log_entry(char *logstring, struct sockaddr_in *sockaddr, char *uri, int size);
 
 void sigpipe_handler(int signal){                                   //연결이 끊어진 소켓에 쓰기를 하게 되면 프로그램을 종료시키는 SIGPIPE 시그널을 핸들링하기 위함 함수
-    printf("SIGPIPE HANDLED\n");                                    //선언? /******/ 
+    printf("SIGPIPE HANDLED\n");                                    //선언?
     return;                                                         
 }
 
@@ -31,7 +31,7 @@ int main(int argc, char **argv){
     struct sockaddr_in clientaddr;                                  //client 의 socket address
     pthread_t tid;
 
-    //Signal(SIGPIPE, sigpipe_handler); /******/
+    //Signal(SIGPIPE, sigpipe_handler);
     pthread_mutex_init(&mutex_lock, NULL);                          //mutex 초기화
 
     int portnum = atoi(argv[1]); 
@@ -52,7 +52,7 @@ void *thread(void *vargp){
     struct sockaddr_in sockaddr = connec->addr;
     Pthread_detach(pthread_self());                                 //pear thread가 죽을 때 회수를 자동으로 해줌
     Free(vargp);                                                    //동적 메모리는 pear thread에서 free
-    // Signal(SIGPIPE, sigpipe_handler); /******/                           //연결이 되지 않은 상태에서 통신 시 sigpie_handler 동작
+    // Signal(SIGPIPE, sigpipe_handler);                            //연결이 되지 않은 상태에서 통신 시 sigpie_handler 동작
     proxy(connfd, &sockaddr);                                       //proxy 실행. 인자는 connfd랑 &sockaddr, sockaddr 는 로그파일 작성시 사용됨. 로그 파일 작성 전후로 pthread_mutex_lock, unlock 실행                                          
     Close(connfd);                                                  //pear thread에서 connfd close
     return NULL;
@@ -201,6 +201,5 @@ void format_log_entry(char *logstring, struct sockaddr_in *sockaddr,
     /* Return the formatted log entry string */
     sprintf(logstring, "%s: %d.%d.%d.%d %s", time_str, a, b, c, d, uri);
 }
-
 
 
