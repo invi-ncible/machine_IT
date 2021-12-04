@@ -120,7 +120,7 @@ void proxy(int connfd, struct sockaddr_in *sockaddr){
         sum += len;
         if (sum <= MAXLINE)             
             strcat(payload, buf2);                                      //payload에 buf2를 복사
-	    rio_writen(connfd, buf2, len);                                  //client와의 connfd에 연결된 파일에 buf2 데이터를 입력
+	rio_writen(connfd, buf2, len);                                  //client와의 connfd에 연결된 파일에 buf2 데이터를 입력
 	}
 
     format_log_entry(log, sockaddr, uri, sum);                          //log 저장 함수
