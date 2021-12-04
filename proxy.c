@@ -97,7 +97,7 @@ void proxy(int connfd, struct sockaddr_in *sockaddr){
  
     sprintf(buf2, "GET %s HTTP/1.0\r\n", path);                         //buf2에 path, version, method 정보 저장
     rio_writen(clientfd, buf2, strlen(buf2));                           //clientfd에 연결된 파일에 buf2의 데이터를 입력
-	sprintf(buf2, "Host: %s\r\n", host);                                //buf2에 host 정보 저장
+    sprintf(buf2, "Host: %s\r\n", host);                                //buf2에 host 정보 저장
     rio_writen(clientfd, buf2, strlen(buf2));                           //clientfd에 연결된 파일에 buf2의 데이터를 입력
     rio_writen(clientfd, user_headers, strlen(user_headers));           //clientfd에 연결된 파일에 헤더의 HTTP 정보 입력
 
@@ -106,7 +106,7 @@ void proxy(int connfd, struct sockaddr_in *sockaddr){
         sum += len;
         if (sum <= MAXLINE)             
             strcat(payload, buf2);                                      //payload에 buf2를 복사
-		rio_writen(connfd, buf2, len);                                  //client와의 connfd에 연결된 파일에 buf2 데이터를 입력
+	rio_writen(connfd, buf2, len);                                  //client와의 connfd에 연결된 파일에 buf2 데이터를 입력
 	}
 
     format_log_entry(log, sockaddr, uri, sum);                          //log 저장 함수
