@@ -1,3 +1,15 @@
+/*
+ * proxy.c - CS:APP Web proxy
+ *
+ * TEAM MEMBERS:
+ *     2016430024 - Yoon HeeSeung
+ *     2017430031 - Lee JuneHee
+ * 
+ * IMPORTANT: Give a high level description of your code here. You
+ * must also provide a header comment at the beginning of each
+ * function that describes what that function does.
+ */ 
+
 #include "csapp.h"
 
 FILE *log_file;                                                         //proxy.log
@@ -15,7 +27,7 @@ int parse_uri(char *uri, char *target_addr, char *path, int *port);
 void format_log_entry(char *logstring, struct sockaddr_in *sockaddr, char *uri, int size);
 
 void sigpipe_handler(int signal){                                       //연결이 끊어진 소켓에 쓰기를 하게 되면 프로그램을 종료시키는 SIGPIPE 시그널을 핸들링하기 위함 함수
-    printf("SIGPIPE HANDLED\n");                                        //선언?
+    printf("SIGPIPE HANDLED\n");                                        
     return;                                                         
 }
 
@@ -31,17 +43,19 @@ int main(int argc, char **argv){
     struct sockaddr_in clientaddr;                                      //client 의 socket address
     pthread_t tid;
 
-    //Signal(SIGPIPE, sigpipe_handler);      
+    signal(SIGPIPE, sigpipe_handler);      
     pthread_mutex_init(&mutex_lock, NULL);                              //mutex 초기화
 
     int portnum = atoi(argv[1]); 
-    listenfd = Open_listenfd(portnum);                                  //client와의 연결을 기다림
+    listenfd = open_listenfd(portnum);                                  //client와의 연결을 기다림
+    log_file = fopen("proxy.log","a");                                  //proxy.log 파일 생성, 맨 뒤에서부터 편집
+
     while(1){
         clientlen = sizeof(struct sockaddr_in);                         //proxy와 client의 connection fd가 동적으로 할당됨
-        connec = Malloc(sizeof(Connect));                               //main thread 와 pear thread 가 동히세 connfd에 접근하는 것을 막음 
-        connec->connectfd= Accept(listenfd, (SA *)&clientaddr, &clientlen);        
+        connec = malloc(sizeof(Connect));                               //main thread 와 pear thread 가 동히세 connfd에 접근하는 것을 막음 
+        connec->connectfd= accept(listenfd, (SA *)&clientaddr, &clientlen);        
         connec->addr=clientaddr;                                        //client와의 connfd와 sockaddr를 connec 구조체에 전달
-        Pthread_create(&tid, NULL, thread, (void *)connec);             //thread 생성, connec를 thread에 인자로 전달
+        pthread_create(&tid, NULL, thread, (void *)connec);             //thread 생성, connec를 thread에 인자로 전달
     }
     close(listenfd);                                                    //thread 생성 후 main thread에서 listenfd 종료
 }
@@ -50,11 +64,11 @@ void *thread(void *vargp){
     Connec *connec = ((Connec *)vargp);
     int connfd = connec->connectfd;
     struct sockaddr_in sockaddr = connec->addr;
-    Pthread_detach(pthread_self());                                     //pear thread가 죽을 때 회수를 자동으로 해줌
-    Free(vargp);                                                        //동적 메모리는 pear thread에서 free
-    //Signal(SIGPIPE, sigpipe_handler);                                 //연결이 되지 않은 상태에서 통신 시 sigpie_handler 동작
+    pthread_detach(pthread_self());                                     //peer thread가 죽을 때 회수를 자동으로 해줌
+    free(vargp);                                                        //동적 메모리는 peer thread에서 free
+    signal(SIGPIPE, sigpipe_handler);                                   //연결이 되지 않은 상태에서 통신 시 sigpie_handler 동작
     proxy(connfd, &sockaddr);                                           //proxy 실행. 인자는 connfd랑 &sockaddr, sockaddr 는 로그파일 작성시 사용됨. 로그 파일 작성 전후로 pthread_mutex_lock, unlock 실행                                          
-    Close(connfd);                                                      //pear thread에서 connfd close
+    close(connfd);                                                      //peer thread에서 connfd close
     return NULL;
 }
 
@@ -81,7 +95,7 @@ void proxy(int connfd, struct sockaddr_in *sockaddr){
         return; 
     
     sscanf(buf1,"%s %s %s", method, uri, version);                      //HTTP request line을 method, uri, version으로 구분
-    read_request_headers(&rio);                                         //Description writen above function
+    read_request_headers(&rio);                                         //함수 정의 부분에 설명 첨부
 
     parse_uri(uri, host, path, &portnum);                               //uri로부터 uri, host, path, portnum을 parsing
 
@@ -106,20 +120,39 @@ void proxy(int connfd, struct sockaddr_in *sockaddr){
         sum += len;
         if (sum <= MAXLINE)             
             strcat(payload, buf2);                                      //payload에 buf2를 복사
-	rio_writen(connfd, buf2, len);                                  //client와의 connfd에 연결된 파일에 buf2 데이터를 입력
+	    rio_writen(connfd, buf2, len);                                  //client와의 connfd에 연결된 파일에 buf2 데이터를 입력
 	}
 
     format_log_entry(log, sockaddr, uri, sum);                          //log 저장 함수
 
     pthread_mutex_lock(&mutex_lock);                                    //다른 thread의 접근 제한
 
-    fprintf(log_file, "%s %d\n", log, sum);                             //log 파일에 로그 기록과 받은 파일의 크기 작성
+    fprintf(log_file, "%s %lu\n", log, sum);                            //log 파일에 로그 기록과 받은 파일의 크기 작성
     fflush(log_file);                                                   //log 파일의 출력 버퍼 비우기
 
     pthread_mutex_unlock(&mutex_lock);                                  //thread 접근 제한 해제
 
     close(clientfd);                                                    //메모리 누수 방지
 }                                                                       
+
+/*
+ * read_request_headers - Read the header and ignore the connection request.
+ *  
+ * 'buf' 안의 문자열을 읽어들어 "\r\n" 기준으로 분할
+ * 표준 HTTP는 각각의 text line을 carriage return과 line feed("\r\n")로 끝내야한다.
+ */
+void read_request_headers(rio_t *rp)
+{
+    char buf[MAXLINE];
+
+    rio_readlineb(rp, buf, MAXLINE);                                    //버퍼에 헤더를 저장
+    while (strcmp(buf, "\r\n"))                                         //"\r\n"을 기준으로 분할하여 출력
+    {
+        rio_readlineb(rp, buf, MAXLINE);
+        printf("%s", buf);
+    }
+    return;
+}
 
 /*
  * parse_uri - URI parser
@@ -158,8 +191,7 @@ int parse_uri(char *uri, char *hostname, char *pathname, int *port)
     if (pathbegin == NULL) {
 	pathname[0] = '\0';
     }
-    else {
-	pathbegin++;	
+    else {	
 	strcpy(pathname, pathbegin);
     }
 
