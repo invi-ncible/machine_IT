@@ -99,12 +99,12 @@ void proxy(int connfd, struct sockaddr_in *sockaddr){
 
     parse_uri(uri, host, path, &portnum);                               //uri로부터 uri, host, path, portnum을 parsing
 
-    printf("----------* Information *-----------\n");
+    printf("*********** Information ************\n");
     printf("uri = \"%s\"\n", uri);
-    printf("host = \"%s\", ", host);
-    printf("port = \"%d\", ", portnum);                                 //Default port number : 80
+    printf("host = \"%s\"\n", host);
+    printf("port = \"%d\"\n", portnum);                                 //Default port number : 80
     printf("path = \"%s\"\n", path);
-    printf("---------* Information end *---------\n");
+    printf("********** Information end **********\n");
                                                                         
     clientfd = open_clientfd(host, portnum);                            //proxy가 web server에 host와 port number를 이용하여 연결을 요청
     rio_readinitb(&rio_client, clientfd);                               //rio_client 구조체에 clientfd 정보 저장
